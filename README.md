@@ -2,6 +2,8 @@
 
 **한국어** | [日本語](README.ja.md)
 
+**공개 코드: 뉴스 인덱싱 코어와 Elasticsearch·Qdrant 저장 어댑터**
+
 뉴스 기사를 검색에 활용하기 위해 **검색용 인덱싱, 키워드·벡터 검색, RAG 답변 흐름**을 구축한 프로젝트입니다. 반복 처리의 부담을 줄이고 신규 기사가 검색에 더 빠르게 반영되도록 인덱싱 방식을 개선했습니다.
 <!-- CLM-005: USER,CODE,RUNTIME,RETROSPECTIVE / CONFIRMED; CLM-014: USER,CODE,RUNTIME,RETROSPECTIVE / CONFIRMED; CLM-021: USER,RETROSPECTIVE / CONFIRMED; CLM-043: USER / CONFIRMED -->
 
@@ -16,7 +18,7 @@
 
 > **이 저장소의 범위**
 >
-> 당시 경험과 개발 기록을 바탕으로 AI 도구를 활용해 **인덱싱 코어와 저장소 어댑터를 현재 다시 구현**했습니다. 과거 운영 코드를 그대로 공개하거나 전체 서비스가 현재 동작한다고 주장하지 않습니다. 검색·RAG·Graph Search는 당시의 경험이며, 공개 코드에는 아직 포함되지 않았습니다.
+> 본인이 제시·확인한 프로젝트 경험과 공개 범위를 바탕으로, AI 도구를 활용해 **인덱싱 코어와 저장소 어댑터를 다시 작성·검증**했습니다. 검색·RAG·Graph Search는 당시 경험이며 현재 공개 코드에는 포함되지 않았습니다. 아래의 설계 설명은 재구현 코드에 관한 것으로 당시 선택 이유를 단정하지 않습니다.
 <!-- REC-001, REC-007: RECONSTRUCTED; CLM-014: USER,CODE,RUNTIME,RETROSPECTIVE / CONFIRMED; CLM-021: USER,RETROSPECTIVE / CONFIRMED; CLM-031: USER,CODE,RETROSPECTIVE / CONFIRMED -->
 
 [프로젝트 구조](#프로젝트-구조) · [문제 해결](#문제-해결) · [현재 코드](#현재-공개-코드) · [테스트](#테스트와-실행)
@@ -27,14 +29,14 @@
 
 ![당시 기능 관계: 기존 기사 저장소에서 읽어 인덱싱하고 Elasticsearch와 Qdrant를 거쳐 하이브리드 검색과 RAG 답변으로 연결](assets/diagrams/historical-flow.svg)
 
-담당 범위는 기존 기사 저장소를 **읽는 단계부터**입니다. 초기 데이터가 해당 저장소에 들어오기까지의 적재는 다른 팀원이 담당했습니다. 이 그림은 확인된 기능 관계를 설명하며 실제 배포 구성이나 모든 ES 처리 완료 후 Qdrant 처리가 시작되는 실행 순서를 확정하지 않습니다.
+담당 범위는 기존 기사 저장소를 **읽는 단계부터**입니다. 초기 데이터가 해당 저장소에 들어오기까지의 적재는 다른 팀원이 담당했습니다. 그림은 확인된 기능 관계를 나타냅니다. [구조와 확인 범위](docs/architecture.md)
 <!-- CLM-005: USER,CODE,RUNTIME,RETROSPECTIVE / CONFIRMED; CLM-041: USER / CONFIRMED; CLM-014: USER,CODE,RUNTIME,RETROSPECTIVE / CONFIRMED; CLM-015: USER,RETROSPECTIVE,CODE,PROPOSAL / CONFIRMED; CLM-021: USER,RETROSPECTIVE / CONFIRMED; CLM-052: USER,CODE,PROPOSAL,RETROSPECTIVE / UNRESOLVED -->
 
 ### 인덱싱 방식의 변화
 
 | | v1 | v2 |
 |---|---|---|
-| 기사 처리 | 정기 배치 | 주기적으로 확인해 **새로 들어온 기사만** 증분 처리 |
+| 기사 처리 | 하루 2회 정기 배치 | 10분마다 확인해 **새로 들어온 기사만** 증분 처리 |
 | Qdrant 저장 | 단일 dense vector | 제목·본문을 위한 두 named vectors |
 
 v2는 반복 조회·처리의 부담을 줄이고 신규 뉴스가 검색에 더 빨리 반영되도록 개선한 버전입니다. 기존 기사 수정·삭제의 동기화는 대상이 아니었습니다. 이는 **개선 목적**이며 정량적인 처리 시간 비교는 확인되지 않았습니다.
@@ -90,6 +92,13 @@ v2는 반복 조회·처리의 부담을 줄이고 신규 뉴스가 검색에 �
 배치는 변환 뒤 ES, Qdrant 순서로 저장합니다. Qdrant 저장이 실패하면 이미 끝난 ES 저장은 되돌리지 않으며, 현재 코드는 rollback·retry·checkpoint를 제공하지 않습니다. 이 저장 순서와 실패 경계는 현재 재구현의 선택입니다.
 <!-- REC-007: RECONSTRUCTED -->
 
+**현재 코드의 설계와 한계**
+
+- 임베딩과 저장소를 인터페이스로 분리해, 외부 서비스 없이 가상의 데이터와 대체 구현으로 변환·실패 경계를 확인할 수 있습니다.
+- 같은 namespace·기사 ID·청크 번호에 같은 point ID를 부여하지만, 기존 기사 내용이 짧아져 청크가 줄면 **이전 청크가 Qdrant에 남을 수 있습니다.** 기사 수정·삭제 동기화와 오래된 청크 정리는 구현하지 않았습니다.
+- Elasticsearch 대량 저장이 실패해도 일부 문서는 이미 저장됐을 수 있습니다. Qdrant의 응답 시간 초과도 작업이 적용되지 않았다는 뜻은 아닙니다. 두 저장소 간 원자적 저장과 배치 차원의 복구는 제공하지 않습니다. [실패 경계 상세](docs/architecture.md#실패-경계)
+<!-- REC-001, REC-007: RECONSTRUCTED -->
+
 ### 실행하지 않고 보는 변환 예시
 
 가상의 기사 한 건을 나눈 **실제 실행 결과**입니다. 각 청크는 같은 기사 ID를 갖고, 길이가 3인 테스트용 벡터와 함께 point로 만들어집니다.
@@ -116,6 +125,8 @@ uv run --no-sync pytest
 
 초기 의존성 설치에는 네트워크가 필요할 수 있습니다. 테스트는 가상 기사, stub, Qdrant 메모리 저장소를 사용하며 API 키나 외부 서버가 필요하지 않습니다. 2026-11-02 로컬 검증에서 **75개 테스트**, Ruff, mypy가 통과했습니다. 실제 저장소 통합이나 검색 품질·운영 성능의 검증을 뜻하지는 않습니다.
 <!-- REC-001, REC-007: RECONSTRUCTED -->
+
+[GitHub Actions 설정](.github/workflows/checks.yml)은 push와 pull request에서 Python 3.11로 같은 테스트와 정적 검사를 실행합니다.
 
 <details>
 <summary>정적 검사와 실행 예제</summary>

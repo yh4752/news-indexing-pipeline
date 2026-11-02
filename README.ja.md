@@ -2,6 +2,8 @@
 
 [한국어](README.md) | **日本語**
 
+**公開コード: ニュースのインデックス作成コアと Elasticsearch・Qdrant の保存アダプター**
+
 ニュース記事を検索に活用するため、**検索用インデックスの構築、キーワード・ベクトル検索、RAG による回答生成**に取り組んだプロジェクトです。繰り返し処理の負担を減らし、新着記事をより早く検索に反映するため、インデックス処理を改善しました。
 <!-- CLM-005: USER,CODE,RUNTIME,RETROSPECTIVE / CONFIRMED; CLM-014: USER,CODE,RUNTIME,RETROSPECTIVE / CONFIRMED; CLM-021: USER,RETROSPECTIVE / CONFIRMED; CLM-043: USER / CONFIRMED -->
 
@@ -16,7 +18,7 @@
 
 > **このリポジトリの範囲**
 >
-> 当時の経験と開発記録をもとに、AI ツールを活用して**インデックス作成コアとストレージアダプターを現在あらためて実装**しました。当時の運用コードそのものの公開や、サービス全体の再現を主張するものではありません。検索・RAG・Graph Search は当時の経験であり、現在の公開コードにはまだ含まれていません。
+> 本人が提示・確認したプロジェクト経験と公開範囲をもとに、AI ツールを活用して**インデックス作成コアとストレージアダプターをあらためて作成・検証**しました。検索・RAG・Graph Search は当時の経験であり、現在の公開コードには含まれていません。以下の設計説明は再構成コードについてのもので、当時の選択理由を断定するものではありません。
 <!-- REC-001, REC-007: RECONSTRUCTED; CLM-014: USER,CODE,RUNTIME,RETROSPECTIVE / CONFIRMED; CLM-021: USER,RETROSPECTIVE / CONFIRMED; CLM-031: USER,CODE,RETROSPECTIVE / CONFIRMED -->
 
 [プロジェクト構成](#プロジェクト構成) · [課題と対応](#課題と対応) · [現在の公開コード](#現在の公開コード) · [テストと実行](#テストと実行)
@@ -27,14 +29,14 @@
 
 ![当時の機能関係: 既存の記事ストレージを読み込み、Elasticsearch と Qdrant、ハイブリッド検索を経て RAG 回答を生成](assets/diagrams/historical-flow.ja.svg)
 
-担当は既存の記事ストレージを**読み込む段階から**です。そのストレージへのデータ取り込みは別のメンバーが担当しました。この図は確認された機能関係を示すもので、実際の配置構成や ES 全件処理の完了後に Qdrant 処理が始まるという実行順序を確定するものではありません。
+担当は既存の記事ストレージを**読み込む段階から**です。そのストレージへのデータ取り込みは別のメンバーが担当しました。図は確認された機能関係を示しています。[構成と確認範囲](docs/architecture.ja.md)
 <!-- CLM-005: USER,CODE,RUNTIME,RETROSPECTIVE / CONFIRMED; CLM-041: USER / CONFIRMED; CLM-014: USER,CODE,RUNTIME,RETROSPECTIVE / CONFIRMED; CLM-015: USER,RETROSPECTIVE,CODE,PROPOSAL / CONFIRMED; CLM-021: USER,RETROSPECTIVE / CONFIRMED; CLM-052: USER,CODE,PROPOSAL,RETROSPECTIVE / UNRESOLVED -->
 
 ### インデックス処理の変化
 
 | | v1 | v2 |
 |---|---|---|
-| 記事の処理 | 定期バッチ | 定期的に確認し、**新着記事のみ**を差分処理 |
+| 記事の処理 | 1日2回の定期バッチ | 10分ごとに確認し、**新着記事のみ**を差分処理 |
 | Qdrant への保存 | 単一の dense vector | タイトル用・本文用の2つの named vectors |
 
 v2 では、繰り返しの取得・処理負担を減らし、新着ニュースを検索へ早く反映することを目指しました。既存記事の更新・削除の同期は対象外です。これは**改善目的**であり、処理時間の定量比較は確認されていません。
@@ -90,6 +92,13 @@ v2 では、繰り返しの取得・処理負担を減らし、新着ニュー�
 各バッチは変換後、ES、Qdrant の順に保存します。Qdrant の保存に失敗した場合、完了済みの ES 保存は rollback されません。現在のコードは rollback・retry・checkpoint を提供しません。これは現在の再構成における保存順序と失敗境界です。
 <!-- REC-007: RECONSTRUCTED -->
 
+**現在のコードの設計と限界**
+
+- 埋め込みとストレージをインターフェースで分離し、外部サービスなしで架空データと代替実装を使って変換や失敗時の挙動を確認できます。
+- 同じ namespace・記事 ID・チャンク番号には同じ point ID を割り当てますが、記事が短くなりチャンク数が減ると、**古いチャンクが Qdrant に残る場合があります。** 記事の更新・削除の同期や古いチャンクの削除は未実装です。
+- Elasticsearch の一括保存が失敗しても、一部の文書は保存済みの可能性があります。Qdrant のタイムアウトも処理が未適用だったことを意味しません。両ストレージ間の原子的な保存とバッチ単位の復旧は提供していません。[失敗時の境界](docs/architecture.ja.md#失敗時の境界)
+<!-- REC-001, REC-007: RECONSTRUCTED -->
+
 ### 実行せずに見る変換例
 
 架空の記事を分割した**実際の実行結果**です。各チャンクは同じ記事 ID を持ち、3次元のテスト用ベクトルとともに point を構成します。
@@ -115,6 +124,8 @@ uv run --no-sync pytest
 
 初回の依存関係インストールにはネットワーク接続が必要な場合があります。テストには架空の記事、stub、Qdrant のメモリストレージを使うため、API キーや外部サーバーは不要です。2026-11-02 のローカル検証で**テスト75件**、Ruff、mypy が通過しました。実ストレージ統合や検索品質・運用性能の検証を意味するものではありません。
 <!-- REC-001, REC-007: RECONSTRUCTED -->
+
+[GitHub Actions の設定](.github/workflows/checks.yml)は push と pull request の際に、Python 3.11 で同じテストと静的解析を実行します。
 
 <details>
 <summary>静的解析と実行例</summary>
