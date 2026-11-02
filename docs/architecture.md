@@ -6,15 +6,7 @@
 
 ## 당시: 기사에서 검색·답변까지
 
-```mermaid
-flowchart LR
-    S["기존 기사 저장소"] -->|"담당 시작: 기사 읽기"| I["인덱싱"]
-    I --> E["검색용 ES"]
-    I --> Q["Qdrant"]
-    E --> H["BM25 + dense + RRF"]
-    Q --> H
-    H --> A["RAG 답변"]
-```
+![당시 기능 관계: 기사 저장소에서 읽어 인덱싱하고 하이브리드 검색과 RAG 답변으로 연결](../assets/diagrams/historical-flow.svg)
 
 | 단계 | 확인된 범위 |
 |---|---|
@@ -46,12 +38,7 @@ flowchart LR
 
 ## 현재: 재구현한 인덱싱 코어
 
-```mermaid
-flowchart LR
-    A["기사 입력"] --> P["청크·fixture 벡터 생성"]
-    P --> E["ES 기사 저장"]
-    E --> Q["Qdrant point 저장"]
-```
+![현재 코드의 배치 내 순서: 기사 입력, 청크와 테스트 벡터 생성, ES 기사 저장, Qdrant point 저장](../assets/diagrams/reconstructed-flow.svg)
 
 현재 구현의 배치 내 순서입니다. 테스트용 임베딩은 의미 검색 모델이 아닙니다. 저장소 연결은 어댑터를 통해 이뤄지며 외부 서버 없이 stub과 Qdrant 메모리 저장소로 검증합니다.
 <!-- REC-001, REC-007: RECONSTRUCTED -->

@@ -6,15 +6,7 @@
 
 ## 当時: 記事から検索・回答まで
 
-```mermaid
-flowchart LR
-    S["既存の記事ストレージ"] -->|"担当開始: 記事を読む"| I["インデックス作成"]
-    I --> E["検索用 ES"]
-    I --> Q["Qdrant"]
-    E --> H["BM25 + dense + RRF"]
-    Q --> H
-    H --> A["RAG 回答生成"]
-```
+![当時の機能関係: 記事ストレージの読み込みからインデックス作成、ハイブリッド検索、RAG 回答生成へ](../assets/diagrams/historical-flow.ja.svg)
 
 | 段階 | 確認された範囲 |
 |---|---|
@@ -46,12 +38,7 @@ flowchart LR
 
 ## 現在: 再構成したインデックス作成コア
 
-```mermaid
-flowchart LR
-    A["記事入力"] --> P["チャンク・fixture ベクトル生成"]
-    P --> E["ES に記事を保存"]
-    E --> Q["Qdrant に point を保存"]
-```
+![現在のコードのバッチ内順序: 記事入力、チャンクとテスト用ベクトル生成、ES 保存、Qdrant point 保存](../assets/diagrams/reconstructed-flow.ja.svg)
 
 現在のバッチ内処理の順序です。テスト用埋め込みは意味検索モデルではありません。ストレージにはアダプターを介して接続し、外部サーバーなしで stub と Qdrant のメモリストレージを使って検証します。
 <!-- REC-001, REC-007: RECONSTRUCTED -->

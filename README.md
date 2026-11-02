@@ -8,12 +8,10 @@
 **사용 장면 예시:** “어제의 반도체 관련 뉴스를 알려줘” → 날짜 범위 해석 → 관련 기사 검색 → 검색 결과를 바탕으로 답변 생성. 당시 기능을 설명하는 가상 질의이며 현재 공개 코드의 실행 결과는 아닙니다.
 <!-- CLM-064: USER,CODE,PROPOSAL,RETROSPECTIVE / CONFIRMED; CLM-065: USER,CODE,RETROSPECTIVE / CONFIRMED; CLM-067: USER,RETROSPECTIVE / CONFIRMED; CLM-021: USER,RETROSPECTIVE / CONFIRMED; REC-007: RECONSTRUCTED -->
 
-| | 프로젝트 요약 |
-|---|---|
-| 기간 | 2025.08–2026.02 |
-| 담당 | 기존 기사 저장소 이후의 검색용 Elasticsearch 리인덱싱, Qdrant 적재, RAG 파이프라인 |
-| 검색 | Elasticsearch BM25 + Qdrant dense retrieval, 최종 결과 결합에 RRF 사용 |
-| 규모 | Elasticsearch 적재 과정에서 누적 약 1만 건의 기사 확인 |
+- **기간:** 2025.08–2026.02
+- **담당:** 기존 기사 저장소 이후의 검색용 Elasticsearch 리인덱싱, Qdrant 적재, RAG 파이프라인
+- **검색:** Elasticsearch BM25 + Qdrant dense retrieval, 최종 결과 결합에 RRF 사용
+- **규모:** Elasticsearch 적재 과정에서 누적 약 1만 건의 기사 확인
 <!-- CLM-046: USER / CONFIRMED; CLM-041: USER / CONFIRMED; CLM-014: USER,CODE,RUNTIME,RETROSPECTIVE / CONFIRMED; CLM-015: USER,RETROSPECTIVE,CODE,PROPOSAL / CONFIRMED; CLM-038: USER,RETROSPECTIVE / CONFIRMED -->
 
 > **이 저장소의 범위**
@@ -27,15 +25,7 @@
 
 ### 당시 기능 관계
 
-```mermaid
-flowchart LR
-    S["기존 기사 저장소"] -->|"담당 시작: 기사 읽기"| I["인덱싱"]
-    I --> E["검색용 Elasticsearch"]
-    I --> Q["Qdrant"]
-    E --> H["하이브리드 검색"]
-    Q --> H
-    H --> A["RAG 답변"]
-```
+![당시 기능 관계: 기존 기사 저장소에서 읽어 인덱싱하고 Elasticsearch와 Qdrant를 거쳐 하이브리드 검색과 RAG 답변으로 연결](assets/diagrams/historical-flow.svg)
 
 담당 범위는 기존 기사 저장소를 **읽는 단계부터**입니다. 초기 데이터가 해당 저장소에 들어오기까지의 적재는 다른 팀원이 담당했습니다. 이 그림은 확인된 기능 관계를 설명하며 실제 배포 구성이나 모든 ES 처리 완료 후 Qdrant 처리가 시작되는 실행 순서를 확정하지 않습니다.
 <!-- CLM-005: USER,CODE,RUNTIME,RETROSPECTIVE / CONFIRMED; CLM-041: USER / CONFIRMED; CLM-014: USER,CODE,RUNTIME,RETROSPECTIVE / CONFIRMED; CLM-015: USER,RETROSPECTIVE,CODE,PROPOSAL / CONFIRMED; CLM-021: USER,RETROSPECTIVE / CONFIRMED; CLM-052: USER,CODE,PROPOSAL,RETROSPECTIVE / UNRESOLVED -->

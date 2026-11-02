@@ -8,12 +8,10 @@
 **利用場面の例:** 「昨日の半導体関連ニュースを教えて」→ 日付範囲を解釈 → 関連記事を検索 → 検索結果をもとに回答を生成。当時の機能を説明する架空の質問であり、現在の公開コードの実行結果ではありません。
 <!-- CLM-064: USER,CODE,PROPOSAL,RETROSPECTIVE / CONFIRMED; CLM-065: USER,CODE,RETROSPECTIVE / CONFIRMED; CLM-067: USER,RETROSPECTIVE / CONFIRMED; CLM-021: USER,RETROSPECTIVE / CONFIRMED; REC-007: RECONSTRUCTED -->
 
-| | プロジェクト概要 |
-|---|---|
-| 期間 | 2025.08–2026.02 |
-| 担当範囲 | 既存の記事ストレージ以降の検索用 Elasticsearch へのリインデックス、Qdrant への格納、RAG パイプライン |
-| 検索 | Elasticsearch BM25 + Qdrant dense retrieval。最終的な結果の統合に RRF を使用 |
-| 規模 | Elasticsearch への取り込み中に累計約1万件の記事を確認 |
+- **期間:** 2025.08–2026.02
+- **担当範囲:** 既存の記事ストレージ以降の検索用 Elasticsearch へのリインデックス、Qdrant への格納、RAG パイプライン
+- **検索:** Elasticsearch BM25 + Qdrant dense retrieval。最終的な結果の統合に RRF を使用
+- **規模:** Elasticsearch への取り込み中に累計約1万件の記事を確認
 <!-- CLM-046: USER / CONFIRMED; CLM-041: USER / CONFIRMED; CLM-014: USER,CODE,RUNTIME,RETROSPECTIVE / CONFIRMED; CLM-015: USER,RETROSPECTIVE,CODE,PROPOSAL / CONFIRMED; CLM-038: USER,RETROSPECTIVE / CONFIRMED -->
 
 > **このリポジトリの範囲**
@@ -27,15 +25,7 @@
 
 ### 当時の機能関係
 
-```mermaid
-flowchart LR
-    S["既存の記事ストレージ"] -->|"担当開始: 記事を読む"| I["インデックス作成"]
-    I --> E["検索用 Elasticsearch"]
-    I --> Q["Qdrant"]
-    E --> H["ハイブリッド検索"]
-    Q --> H
-    H --> A["RAG 回答生成"]
-```
+![当時の機能関係: 既存の記事ストレージを読み込み、Elasticsearch と Qdrant、ハイブリッド検索を経て RAG 回答を生成](assets/diagrams/historical-flow.ja.svg)
 
 担当は既存の記事ストレージを**読み込む段階から**です。そのストレージへのデータ取り込みは別のメンバーが担当しました。この図は確認された機能関係を示すもので、実際の配置構成や ES 全件処理の完了後に Qdrant 処理が始まるという実行順序を確定するものではありません。
 <!-- CLM-005: USER,CODE,RUNTIME,RETROSPECTIVE / CONFIRMED; CLM-041: USER / CONFIRMED; CLM-014: USER,CODE,RUNTIME,RETROSPECTIVE / CONFIRMED; CLM-015: USER,RETROSPECTIVE,CODE,PROPOSAL / CONFIRMED; CLM-021: USER,RETROSPECTIVE / CONFIRMED; CLM-052: USER,CODE,PROPOSAL,RETROSPECTIVE / UNRESOLVED -->
