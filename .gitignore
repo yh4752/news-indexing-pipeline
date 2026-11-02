@@ -1,0 +1,25 @@
+# Private source mappings and research notes must never be committed.
+evidence/private/
+
+# Local credentials and certificates
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Local/editor noise
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Python development artifacts
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.venv/
+__pycache__/
+*.py[cod]
